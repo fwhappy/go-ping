@@ -192,7 +192,7 @@ func (pinger *Pinger) ping() error {
 			pinger.OnRecv()
 		}
 
-		if pinger.Count == 0 && pinger.PacketsSent >= pinger.Count {
+		if pinger.Count > 0 && pinger.PacketsSent >= pinger.Count {
 			break
 		}
 	}
