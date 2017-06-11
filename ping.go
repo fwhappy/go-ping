@@ -1,9 +1,7 @@
 package ping
 
 import (
-	"fmt"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -134,8 +132,7 @@ func (pinger *Pinger) ping() error {
 
 	var seq int16 = 1
 	id0, id1 := genidentifier(pinger.addr)
-
-	if pinger.PacketsSent < pinger.Count {
+	for {
 		pinger.PacketsSent++
 		var msg = make([]byte, pinger.size+ECHO_REQUEST_HEAD_LEN)
 		msg[0] = 8                        // echo
@@ -181,8 +178,6 @@ func (pinger *Pinger) ping() error {
 			// endduration >= int(timeout) ||
 			endduration >= int(int64(pinger.Timeout)/(1000*1000)) ||
 			receive[ECHO_REPLY_HEAD_LEN] == 11 {
-
-			// fmt.Println("对 " + cname + "[" + pinger.addr + "]" + " 的请求超时。")
 			pinger.OnTimeout()
 
 		} else {
@@ -195,11 +190,13 @@ func (pinger *Pinger) ping() error {
 			pinger.PacketsRecv++
 			pinger.Stats.TTL = int(receive[8])
 			pinger.OnRecv()
-			fmt.Println("来自 [" + pinger.addr + "]" + " 的回复: 字节=32 时间=" + strconv.Itoa(pinger.Stats.Endduration) + "ms TTL=" + strconv.Itoa(pinger.Stats.TTL))
+		}
+
+		if pinger.Count == 0 && pinger.PacketsSent >= pinger.Count {
+			break
 		}
 	}
 	pinger.OnFinish()
-	// stat(pinger.addr, pinger.PacketsSent, pinger.PacketsSent-pinger.PacketsRecv, pinger.PacketsRecv, shortT, longT, sumT)
 	return nil
 }
 
@@ -228,16 +225,6 @@ func gensequence(v int16) (byte, byte) {
 
 func genidentifier(host string) (byte, byte) {
 	return host[0], host[1]
-}
-
-func stat(ip string, sendN int, lostN int, recvN int, shortT int, longT int, sumT int) {
-	fmt.Println()
-	fmt.Println(ip, " 的 Ping 统计信息:")
-	fmt.Printf("    数据包: 已发送 = %d，已接收 = %d，丢失 = %d (%d%% 丢失)，\n", sendN, recvN, lostN, int(lostN*100/sendN))
-	fmt.Println("往返行程的估计时间(以毫秒为单位):")
-	if recvN != 0 {
-		fmt.Printf("    最短 = %dms，最长 = %dms，平均 = %dms\n", shortT, longT, sumT/sendN)
-	}
 }
 
 func isIPv4(ip net.IP) bool {
